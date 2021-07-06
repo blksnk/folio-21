@@ -19,6 +19,7 @@ export default class GL {
     this.camera = setupCamera();
 
     this.cameraTargetPos = new THREE.Vector3(0, 0, 500);
+    this.mouseWorldPos =  new THREE.Vector3(0, 0, 1);
     this.lerpTime = 0;
     this.selectedIndex = 0;
     
@@ -55,8 +56,47 @@ export default class GL {
         this.selectImg(index)
       }
     }
+
+    const onMouseMove = (e) => {
+      // get mouse position in world coordinates
+      const {x, y} = getMouseWorldPos(e)
+      this.mouseWorldPos.x = x;
+      this.mouseWorldPos.y = y;
+    }
+
+    const onKey = (e) => {
+      // select img with arrow keys
+      let i = this.selectedIndex
+      switch(e.code) {
+        case 'ArrowRight':
+          i++;
+          break
+        case 'ArrowLeft':
+          i--;
+          break
+      }
+      if(i < this.imgCount && i >= 0) {
+        // reset lerp time to prevent infinite lerp when scrolling fast
+        this.lerpTime = 0
+        this.selectImg(i)
+      }
+    }
+
+    const onMouseDown = () => {
+      console.log(this.mouseWorldPos)
+    }
+
+    const onMouseUp = () => {
+      console.log(this.mouseWorldPos)
+    }
+
     window.addEventListener('resize', onResize)
     window.addEventListener('wheel', onWheel)
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('keydown', onKey)
+    window.addEventListener('mousedown', onMouseDown)
+    window.addEventListener('mouseup', onMouseUp)
+
   }
   
   selectImg(index) {
@@ -71,7 +111,7 @@ export default class GL {
 
   // displace unselected planes to make space for rotated selected plane
   displacePlanes() {
-    const displacement = this.planes[this.selectedIndex].width / 2
+    const displacement = this.planes[this.selectedIndex].width / 2 + IMG_OFFSET / 2
     // displace each group by half of the selected plane's width + offset in opposite directions
     for(let i = 0; i < this.planes.length; i++) {
       const current = this.planes[i]
@@ -100,12 +140,30 @@ export default class GL {
   }
 
   movePlanes() {
-    this.planes.forEach(({plane, targetPos, targetRotation}) => {
+    this.planes.forEach(({plane, targetPos, targetRotation}, i) => {
       // lerp plane position between current and target positions
       plane.position.lerp(targetPos, this.lerpTime)
       // Rotate plane when selected
-      plane.rotation.y = lerp(plane.rotation.y, targetRotation.y, this.lerpTime)
+      
+      
+      if(i === this.selectedIndex) {
+        if(this.lerpTime > 0 && this.lerpTime < 1) {
+          plane.rotation.y = lerp(plane.rotation.y, this.mouseWorldPos.x / 4, this.lerpTime)
+          plane.rotation.x = lerp(plane.rotation.x, -this.mouseWorldPos.y / 4, this.lerpTime)
+        } else {
+          plane.rotation.y = this.mouseWorldPos.x / 4
+          plane.rotation.x = -this.mouseWorldPos.y / 4
+        }
+      } else {
+        plane.rotation.y = lerp(plane.rotation.y, targetRotation.y, this.lerpTime)
+        plane.rotation.x = lerp(plane.rotation.x, targetRotation.x, this.lerpTime)
+      }
+
     })
+  }
+
+  mouseEffects() {
+
   }
 
   render() {
@@ -149,15 +207,6 @@ export function resizeCamera(camera, width = window.innerWidth, height = window.
   camera.updateProjectionMatrix();
 }
 
-export function setupEvents({renderer, camera}) {
-  function onResize() {
-    resizeRenderer(renderer)
-    resizeCamera(camera)
-  }
-  window.addEventListener('resize', onResize)
-  window.addEventListener('wheel', e => onWheel(e, camera))
-}
-
 export function positionPlane(plane, index) {
   plane.rotation.y = degToRad(90)
   plane.position.x = index * IMG_OFFSET
@@ -198,4 +247,11 @@ export function normalizeImgSize(w, h, max) {
   const width = isPortrait ? max * ratio : max;
   const height = !isPortrait ? max / ratio : max;
   return {width, height}
+}
+
+export function getMouseWorldPos({clientX, clientY}) {
+  const {width, height} = getDimensions()
+  let x = (clientX / width) * 2 - 1;
+  let y = -(clientY / height) * 2 + 1;
+  return {x, y}
 }
