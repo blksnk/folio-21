@@ -1,7 +1,11 @@
-import {getDimensions, degToRad, lerp} from './units.js'
+import {getDimensions, degToRad, lerp, clamp, contained} from './units.js'
+import Bezier from './bezier.js'
 import DATA_IMG from '../../data/images.js'
 
+const rotationBezier = Bezier(.17, .67, .83, .67)
+
 const IMG_OFFSET = 100
+const LERP_COEF = 0.05
 
 export default class GL {
   constructor({ canvas }) {
@@ -10,6 +14,7 @@ export default class GL {
   
   async init(canvas) {
     this.loader = new THREE.TextureLoader()
+    this.raycaster = new THREE.Raycaster()
     this.textures = null;
     
     this.images = DATA_IMG;
@@ -19,17 +24,23 @@ export default class GL {
     this.camera = setupCamera();
 
     this.cameraTargetPos = new THREE.Vector3(0, 0, 500);
-    this.mouseWorldPos =  new THREE.Vector3(0, 0, 1);
+    this.cameraScrollPos = 0;
+    this.scrollPercent = 0;
+    this.mouseWorldPos =  new THREE.Vector2(0.5, 0.5);
     this.lerpTime = 0;
     this.selectedIndex = 0;
+    this.hoverIndex = 0;
     
-    //load textures and create planes
+    // load textures and create planes
     const planes = await Promise.all(this.images.map(({url}, index) => createPlane(this.loader, url, index)))
     this.planes = planes;
+    this.planeObjects = this.planes.map(({plane}) => plane)
     // store nbr of imgs for boundaries detection
-    this.imgCount = planes.length
+    this.imgCount = planes.length - 1
+    // camera max scroll length for lerp
+    this.scrollTrackLength = (this.imgCount) * IMG_OFFSET
     // add planes to scene
-    this.scene.add(...this.planes.map(({plane}) => plane))
+    this.scene.add(...this.planeObjects)
     this.setupEvents()
     this.displacePlanes()
 
@@ -50,7 +61,7 @@ export default class GL {
         incr = -1;
       }
       const index = this.selectedIndex + incr
-      if(index < this.imgCount && index >= 0) {
+      if(index <= this.imgCount && index >= 0) {
         // reset lerp time to prevent infinite lerp when scrolling fast
         this.lerpTime = 0
         this.selectImg(index)
@@ -75,7 +86,7 @@ export default class GL {
           i--;
           break
       }
-      if(i < this.imgCount && i >= 0) {
+      if(i <= this.imgCount && i >= 0) {
         // reset lerp time to prevent infinite lerp when scrolling fast
         this.lerpTime = 0
         this.selectImg(i)
@@ -84,6 +95,7 @@ export default class GL {
 
     const onMouseDown = () => {
       console.log(this.mouseWorldPos)
+      this.checkHover()
     }
 
     const onMouseUp = () => {
@@ -100,13 +112,12 @@ export default class GL {
   }
   
   selectImg(index) {
-    //rotate last selected back 90deg
+    // set net selected index
     this.selectedIndex = index;
     this.cameraTargetPos.x = IMG_OFFSET * index
 
+    // move planes according to selected index
     this.displacePlanes()
-    // rotate selected plane to face camera
-    const {plane} = this.planes[index]
   }
 
   // displace unselected planes to make space for rotated selected plane
@@ -128,10 +139,19 @@ export default class GL {
     }
   }
 
+  calcScrollPercent() {
+    const scrollTargetPercent = this.cameraTargetPos.x / this.scrollTrackLength || 0;
+    this.scrollPercent += (scrollTargetPercent - this.scrollPercent) * LERP_COEF;
+  }
+
   moveCamera() {
+    // lerp camera position between current and target positions
+    // correct for track length 
+    this.camera.position.x = this.scrollPercent * (IMG_OFFSET) * this.imgCount
+    
     if(this.camera.position.distanceTo(this.cameraTargetPos) >= 0.01) {
-      // lerp camera position between current and target positions
-      this.camera.position.lerp(this.cameraTargetPos, this.lerpTime)
+      // this.camera.position.x += (lerpPercentPos - this.camera.position.x) * 0.05
+      // this.camera.position.lerp(this.cameraTargetPos, this.lerpTime)
       this.lerpTime += 0.005;
     }
     else {
@@ -140,33 +160,35 @@ export default class GL {
   }
 
   movePlanes() {
-    this.planes.forEach(({plane, targetPos, targetRotation}, i) => {
+    this.planes.forEach(({plane, targetPos, clamped}, i) => {
       // lerp plane position between current and target positions
       plane.position.lerp(targetPos, this.lerpTime)
-      // Rotate plane when selected
+
+      // select target rotation in radians based on position relative to selected index
+      const radians = degToRad(i === this.selectedIndex ? 0 : i < this.selectedIndex ? 90 : -90)
       
-      
-      if(i === this.selectedIndex) {
-        if(this.lerpTime > 0 && this.lerpTime < 1) {
-          plane.rotation.y = lerp(plane.rotation.y, this.mouseWorldPos.x / 4, this.lerpTime)
-          plane.rotation.x = lerp(plane.rotation.x, -this.mouseWorldPos.y / 4, this.lerpTime)
-        } else {
-          plane.rotation.y = this.mouseWorldPos.x / 4
-          plane.rotation.x = -this.mouseWorldPos.y / 4
-        }
-      } else {
-        plane.rotation.y = lerp(plane.rotation.y, targetRotation.y, this.lerpTime)
-        plane.rotation.x = lerp(plane.rotation.x, targetRotation.x, this.lerpTime)
-      }
+      // lerp and add rotation increment to plane
+      plane.rotation.y += (radians - plane.rotation.y) * LERP_COEF
+
 
     })
+    // console.log(...this.planes.map(({plane}, i) => i + ': ' + Math.ceil(plane.rotation.y / Math.PI * 180) + ' | '))
   }
 
-  mouseEffects() {
-
+  checkHover() {
+    // cast ray from mouse position, get index of plane that is hovered
+    this.raycaster.setFromCamera(this.mouseWorldPos, this.camera)
+    const intersects = this.raycaster.intersectObjects(this.planeObjects)
+    if(intersects.length > 0) {
+      // get index of next plane
+      const {index} = intersects[0].object.userData
+      this.hoverIndex = index
+    }
   }
 
   render() {
+    this.checkHover()
+    this.calcScrollPercent()
     this.moveCamera()
     this.movePlanes()
 
@@ -188,7 +210,7 @@ export function setupRenderer(canvas) {
 export function setupCamera() {
   const {width, height} = getDimensions();
   const camera = new THREE.PerspectiveCamera(75, width / height, 1, 1000);
-  camera.position.setZ(950)
+  camera.position.setZ(500)
   return camera;
 }
 
@@ -217,7 +239,6 @@ export function positionPlane(plane, index) {
   }
 }
 
-
 export const createPlane = async (loader, url, index) => new Promise((resolve, reject) => {
   loader.load(
     url,
@@ -228,13 +249,15 @@ export const createPlane = async (loader, url, index) => new Promise((resolve, r
 
       // create plane width image texture
       const geo = new THREE.PlaneGeometry(width, height);
+      // embed index into plane
       const mat = new THREE.MeshBasicMaterial({
         side: THREE.DoubleSide,
         map: texture
       })
       const plane = new THREE.Mesh(geo, mat);
+      plane.userData = {index}
       // position planes & return basePosition, targetPosition, dimensions
-      return resolve({...positionPlane(plane, index), width, height})
+      return resolve({...positionPlane(plane, index), width, height, clamped: false})
     },
     undefined,
     e => reject(e)
