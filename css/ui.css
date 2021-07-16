@@ -1,0 +1,96 @@
+nav {
+  pointer-events: none;
+  user-select: none;
+  width: 100%;
+  height: 100%;
+  position: fixed;
+  z-index: 1;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+nav > div {
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 100px;
+  padding: 0 60px;
+}
+
+nav > div > div {
+  gap: 15px;
+  align-items: center;
+}
+
+#btn-prev, #btn-next {
+  position: relative;
+  width: 25px;
+  height: 15px;
+  pointer-events: all;
+}
+
+#btn-prev::after, #btn-next::after {
+  content: "";
+  background: url('../assets/svg/arrow.svg');
+  background-size: cover;
+  width: 25px;
+  height: 15px;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+#btn-prev::after {
+  transform: rotate(180deg);
+}
+
+.flex {
+  display: flex;
+}
+
+.separator {
+  width: 1.5px;
+  height: 12px;
+  background-color: var(--beige);
+}
+
+
+#container {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  width: 100vw;
+  height: 100vh;
+  user-select: none;
+  pointer-events: none;
+  display: none
+}
+
+#track {
+  height: max-content;
+  z-index: 1;
+  width: auto;
+}
+
+#description {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 5px;
+}
+
+#description div {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+#track svg {
+  width: 100%;
+}
+
+#track text {
+}

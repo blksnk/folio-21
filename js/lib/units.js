@@ -6,13 +6,14 @@ export function getDimensions() {
     center: {
       x: innerWidth / 2,
       y: innerHeight / 2,
-    }
+    },
+    ratio: innerWidth / innerHeight,
   }
 }
 
-export function degToRad(deg) {
-  return deg * Math.PI / 180
-}
+export const degToRad = (deg) => deg * (Math.PI / 180);
+
+export const radToDeg = (rad) => rad * (180 / Math.PI);
 
 export const lerp = (x, y, a) => x * (1 - a) + y * a;
 

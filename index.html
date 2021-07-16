@@ -1,17 +1,51 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="css/root.css">
+  <link rel="stylesheet" href="css/ui.css">
   <title>Folio 21</title>
 </head>
+
 <body>
 
   <canvas id="gl-canvas" resize></canvas>
-  
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha512-dLxUelApnYxpLt6K2iomGngnHO83iUvZytA3YjDUCjT0HDOHKXnVYdf3hU4JjM8uEhxf9nD1/ey98U3t2vZ0qQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+  <nav class="flex">
+    <div id="nav-top" class="flex">
+      <button id="btn-menu">menu</button>
+      <a href="contact">contact</a>
+    </div>
+
+    <div id="nav-btm" class="flex">
+      <div id="nav-btm-left" class="flex">
+        <span id="count-current">1</span>
+        <div class="separator"></div>
+        <span id="count-total">1</span>
+      </div>
+      <div id="nav-btm-right" class="flex">
+        <button id="btn-prev"></button>
+        <button id="btn-next"></button>
+      </div>
+    </div>
+  </nav>
+
+  <main id='container'>
+    <section id="track">
+      <svg id="title">
+        <text x="0" y="24">desolate</text>
+      </svg>
+      <div id="description"></div>
+    </section>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"
+    integrity="sha512-dLxUelApnYxpLt6K2iomGngnHO83iUvZytA3YjDUCjT0HDOHKXnVYdf3hU4JjM8uEhxf9nD1/ey98U3t2vZ0qQ=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script src="./js/index.js" type="module"></script>
 </body>
+
 </html>

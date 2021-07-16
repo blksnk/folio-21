@@ -1,7 +1,24 @@
+@font-face {
+  font-family: 'Faust';
+  src: url('../assets/fonts/Faust-WagnerRegular.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Helvetica';
+  src: url('../assets/fonts/HelveticaNowDisplay-Regular.otf') format('opentype');
+}
+
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  border: none;
+  background: none;
+  text-decoration: none;
+  --beige: #FEF3E6;
+  --orange: #CC8B6F;
+  --grey: #40403E;
+  --white: #FEFEFE
 }
 
 html, body {
@@ -9,11 +26,44 @@ html, body {
   width: 100vw;
 }
 
+body {
+  background-color: var(--grey);
+}
+
 ::-webkit-scrollbar {
   display: none;
 }
 
 canvas#gl-canvas {
+  width: 100vw;
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+}
+
+h1, text {
+  font-family: 'Faust';
+  text-transform: uppercase;
+  font-size: 2rem;
   width: 100%;
-  height: 100%;
+  font-weight: normal;
+  color: #CC8B6F;
+  fill: #CC8B6F;
+}
+
+p, span, a, button {
+  font-family: 'Helvetica';
+  font-size: 15px;
+  text-transform: uppercase;
+  color: var(--beige);
+}
+
+a, button {
+  transition: color 0.2s linear;
+  pointer-events: all;
+}
+
+a:hover, button:hover {
+  color: var(--white);
 }
