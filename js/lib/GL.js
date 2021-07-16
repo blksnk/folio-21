@@ -7,7 +7,7 @@ import shaders from '../shaders/index.js'
 
 const rotationBezier = Bezier(.17, .67, .83, .67)
 
-const IMG_OFFSET = 100
+const IMG_OFFSET = 50
 const LERP_COEF = 0.05
 
 export default class GL {
@@ -280,7 +280,7 @@ export function setupRenderer(canvas) {
 
 export function setupCamera() {
   const {width, height} = getDimensions();
-  const camera = new THREE.PerspectiveCamera(75, width / height, 1, 1000);
+  const camera = new THREE.PerspectiveCamera(50, width / height, 1, 1000);
   camera.position.setZ(500)
   return camera;
 }
@@ -384,8 +384,8 @@ export function calcPlaneHeight(targetHeight = getDimensions().height - 200, cam
 
 export function createGrid(offset = IMG_OFFSET / 4) {
   const {width, height} = getDimensions()
-  const xAmount = Math.floor(width / offset * 2),
-        yAmount = Math.floor(height / offset * 2)
+  const xAmount = Math.floor(width / offset * 4),
+        yAmount = Math.floor(height / offset * 4)
   
   const particlesAmount = xAmount * yAmount
   const positions = new Float32Array(particlesAmount * 3)
