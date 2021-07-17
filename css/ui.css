@@ -49,9 +49,9 @@ nav > div > div {
 }
 
 .separator {
-  width: 1.5px;
-  height: 12px;
-  background-color: var(--beige);
+  height: 1.5px;
+  width: 15px;
+  background-color: var(--orange);
 }
 
 
@@ -61,15 +61,23 @@ nav > div > div {
   align-items: flex-start;
   width: 100vw;
   height: 100vh;
+  overflow: hidden;
   user-select: none;
   pointer-events: none;
-  display: none
 }
 
 #track {
   height: max-content;
   z-index: 1;
   width: auto;
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .6s ease-in-out;
 }
 
 #description {
@@ -80,6 +88,10 @@ nav > div > div {
   gap: 5px;
 }
 
+#description span {
+  color: var(--beige) ! important;
+}
+
 #description div {
   width: 100%;
   display: flex;
@@ -88,9 +100,8 @@ nav > div > div {
   justify-content: space-between;
 }
 
-#track svg {
-  width: 100%;
-}
-
-#track text {
+#track #title {
+  height: 150px;
+  transform: translateY(-75px);
+  pointer-events: none;
 }

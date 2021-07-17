@@ -16,8 +16,8 @@
   background: none;
   text-decoration: none;
   --beige: #FEF3E6;
-  --orange: #CC8B6F;
-  --grey: #40403E;
+  --orange: rgb(233, 120, 106);
+  --grey: #141414;
   --white: #FEFEFE
 }
 
@@ -48,20 +48,21 @@ h1, text {
   font-size: 2rem;
   width: 100%;
   font-weight: normal;
-  color: #CC8B6F;
-  fill: #CC8B6F;
+  color: var(--orange);
+  fill: var(--orange);
 }
 
-p, span, a, button {
-  font-family: 'Helvetica';
+a, button, span, p {
   font-size: 15px;
+  font-family: 'Helvetica';
   text-transform: uppercase;
-  color: var(--beige);
-}
-
-a, button {
   transition: color 0.2s linear;
   pointer-events: all;
+  color: var(--orange);
+}
+
+p {
+  color: var(--beige);
 }
 
 a:hover, button:hover {

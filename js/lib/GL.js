@@ -1,23 +1,24 @@
-import {getDimensions, degToRad, lerp, clamp, contained} from './units.js'
+import {getDimensions, degToRad} from './units.js'
 import {addListener} from '../ui.js'
-import Bezier from './bezier.js'
 import DATA_IMG from '../../data/projects.js'
-
 import shaders from '../shaders/index.js'
-
-const rotationBezier = Bezier(.17, .67, .83, .67)
 
 const IMG_OFFSET = 50
 const LERP_COEF = 0.05
 
 export default class GL {
-  constructor({ canvas, onChange, onSelect }) {
+  constructor({ canvas, onChange, onSelect, onScroll }) {
     this.callbacks = {
       onChange: onChange || (() => null),
-      onSelect: onSelect || (() => null)
+      onSelect: onSelect || (() => null),
+      onScroll: onScroll || (() => null),
     }
     this.canvas = canvas
     this.init()
+  }
+
+  get selectedPlane() {
+    return this.planes[this.selectedIndex]
   }
   
   async init() {
@@ -94,27 +95,48 @@ export default class GL {
     }
 
     const onKey = (e) => {
-      // select img with arrow keys
-      let i = this.selectedIndex
+      // select img with left & right arrow keys
+      const select = (i) => {
+        if(i <= this.imgCount && i >= 0) {
+          this.selectImg(i)
+        }
+      }
+
+      const scroll = (inc) => {
+        if(this.viewProject) {
+          this.scrollImg(inc)
+        }
+      }
+
       switch(e.code) {
         case 'ArrowRight':
-          i++;
-          break
+          select(this.selectedIndex + 1)
+          break;
         case 'ArrowLeft':
-          i--;
-          break
-      }
-      if(i <= this.imgCount && i >= 0) {
-        // reset lerp time to prevent infinite lerp when scrolling fast
-        this.selectImg(i)
+          select(this.selectedIndex - 1)
+          break;
+        case 'ArrowDown':
+          scroll(1)
+          break;
+        case 'ArrowUp':
+          scroll(-1)
+          break;
+        case 'Enter':
+          this.openProject()
+          this.displacePlanes()
+          break;
+        case 'Escape':
+          this.closeProject()
+          this.displacePlanes()
+          break;
       }
     }
 
     const onMouseDown = () => {
-      this.onClick()
     }
-
+    
     const onMouseUp = () => {
+      this.onClick()
     }
 
     addListener(window, 'resize', onResize)
@@ -126,7 +148,6 @@ export default class GL {
   }
 
   selectNext() {
-    console.log(this.selectedIndex, this.imgCount)
     if(this.selectedIndex < this.imgCount) {
       this.selectImg(this.selectedIndex + 1)
     }
@@ -152,19 +173,29 @@ export default class GL {
 
   scrollImg(incr) {
     // translate selected plane vertically based on scroll direction
-    this.planes[this.selectedIndex].targetPos.y += incr * 100
+    this.planes[this.selectedIndex].targetPos.y += incr * pixelToLength(50, this.camera, this.selectedPlane)
+  }
+
+  translateScroll() {
+    // get current plane positions
+    const l = this.selectedPlane.plane.position.y
+    // translate to px
+    const px = lengthToPixel(l, this.camera, this.selectedPlane)
+    const target = this.selectedPlane.targetPos.x
+
+    this.scrollY = l;
+
+    this.callbacks.onScroll({l, px, target})
   }
 
   onClick() {
     // if plane is selected and hovered, toggle open and close project
     if(this.hoverIndex === this.selectedIndex && this.hovering) {
-      this.viewProject = !this.viewProject
       if (this.viewProject) {
-        this.callbacks.onSelect({index: this.selectedIndex})
-      } else {
         this.closeProject()
+      } else {
+        this.openProject()
       }
-      this.lerpTime = 0
       this.displacePlanes()
       // else select overed img
     } else if(this.hovering) {
@@ -197,7 +228,6 @@ export default class GL {
 
   moveCamera() {
     // lerp camera position between current and target positions
-    // correct for track length 
     this.camera.position.x = this.scrollPercent * (IMG_OFFSET) * this.imgCount
   }
 
@@ -207,7 +237,7 @@ export default class GL {
       const isSelected = i === this.selectedIndex
       const isHovered = i === this.hoverIndex && this.hovering
       
-      const scale = this.viewProject && isSelected ? 2 - plane.userData.frac : isSelected && isHovered ? 0.9 : 1
+      const scale = this.viewProject && isSelected ? 1 : isSelected && isHovered ? 0.9 : 1
       
       const mouseRotRatioY = -this.mouseWorldPos.x
       const mouseRotRatioX = this.mouseWorldPos.y / getDimensions().ratio * plane.userData.ratio
@@ -225,7 +255,7 @@ export default class GL {
       plane.rotation.y += (rotationY - plane.rotation.y) * LERP_COEF * 2
       plane.rotation.x += (rotationX - plane.rotation.x) * LERP_COEF * 2
       plane.scale.x += (scale - plane.scale.x) * LERP_COEF
-      plane.scale.y += (scale - plane.scale.x) * LERP_COEF
+      plane.scale.y += (scale - plane.scale.y) * LERP_COEF
       plane.position.x += (targetPos.x - plane.position.x) * LERP_COEF
       plane.position.y += (targetPos.y - plane.position.y) * LERP_COEF
     })
@@ -248,10 +278,17 @@ export default class GL {
 
   closeProject() {
     this.viewProject = false;
+    this.callbacks.onSelect({index: this.selectedIndex, select: this.viewProject})
     // reset scroll position of planes
     for(let i = 0; i <= this.imgCount; i++) {
       this.planes[i].targetPos.y = 0;
     } 
+  }
+
+  openProject() {
+    this.viewProject = true;
+    this.callbacks.onSelect({index: this.selectedIndex, select: this.viewProject})
+    this.selectedPlane.targetPos.y = pixelToLength(-175, this.camera, this.selectedPlane)
   }
 
   render() {
@@ -259,6 +296,7 @@ export default class GL {
     this.calcScrollPercent()
     this.moveCamera()
     this.movePlanes()
+    this.translateScroll()
 
     // update grid uniforms
     this.grid.material.uniforms.mousePos.value = this.mouseWorldPos
@@ -317,7 +355,7 @@ export const createPlane = async (loader, url, index, camera) => new Promise((re
       // extract image dimensions
       const {naturalWidth, naturalHeight} = texture.image;
       const {size, frac} = calcPlaneHeight(getDimensions().height - 200, camera)
-      const {width, height, ratio} = normalizeImgSize(naturalWidth, naturalHeight, size)
+      const {width, height, ratio} = clampImgSize(naturalWidth, naturalHeight, size)
 
       // create plane width image texture
       const geo = new THREE.PlaneGeometry(width, height);
@@ -339,7 +377,7 @@ export const createPlane = async (loader, url, index, camera) => new Promise((re
   )
 })
 
-export function normalizeImgSize(w, h, max) {
+export function clampImgSize(w, h, max) {
   const ratio = w / h;
   const isPortrait = h > w;
   const width = isPortrait ? max * ratio : max;
@@ -354,13 +392,32 @@ export function getMouseWorldPos({clientX, clientY}) {
   return {x, y}
 }
 
-export function getObjectWindowDimensions(camera, object) {
+export const lengthToPixel = (l, camera, object, axisY = false) => {
+  const frac = l / getHeightVisible(camera, object)
+  const {height, ratio} = getDimensions()
+  let px = height * frac
+  if(axisY) {
+    px *= ratio
+  }
+  return px
+}
+
+export const pixelToLength = (px, camera, object) => {
+  const frac = px / getDimensions().height
+  const l = frac * getHeightVisible(camera, object)
+  return l
+}
+
+const getHeightVisible = (camera, object) => {
   const dist = camera.position.z - object.plane.position.z
   const vFOV = degToRad(camera.fov)
-
   const heightVisible = 2 * Math.tan(vFOV / 2) * dist
 
-  const frac = object.height / heightVisible
+  return heightVisible
+}
+
+export function getObjectWindowDimensions(camera, object) {
+  const frac = object.height / getHeightVisible(camera, object)
 
   const height = getDimensions().height * frac
 
@@ -397,21 +454,16 @@ export function createGrid(offset = IMG_OFFSET / 4) {
   const yRes = offset - ( ( yAmount * offset ) / 2 )
 
   for(let ix = 0; ix < xAmount; ix ++) {
-
     for(let iy = 0; iy < yAmount; iy ++) {
-
       positions[ i ] = ix * offset - ( ( xAmount * offset ) / 2 ); // x
       positions[ i + 1 ] = iy * offset - ( ( yAmount * offset ) / 2 ); // y
       positions[ i + 2 ] = -500; // z
-
       scales[ j ] = 10;
 
       i += 3;
       j ++;
     }
   }
-
-  console.log(positions)
 
   const geometry = new THREE.BufferGeometry()
   geometry.setAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );
@@ -439,4 +491,25 @@ export function createGrid(offset = IMG_OFFSET / 4) {
   const particles = new THREE.Points(geometry, material);
 
   return particles;
+}
+
+export class Text {
+  constructor(text, options = {}) {
+    this.text = text
+    this.options = {...this.defaultOptions, options}
+    this.init()
+  }
+
+  get defaultOptions() {
+    return {
+      display: 'flex',
+      gap: 15,
+      fontSize: 15,
+      justify: 'between',
+    }
+  }
+
+  init() {
+    
+  }
 }

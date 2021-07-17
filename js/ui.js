@@ -1,4 +1,4 @@
-import { getDimensions } from "./lib/units.js"
+import { getDimensions, lerpUntil } from "./lib/units.js"
 
 export const TRACK = document.getElementById('track')
 export const TITLE = document.getElementById('title')
@@ -9,10 +9,13 @@ export const COUNT_CURRENT = document.getElementById('count-current');
 export const COUNT_TOTAL = document.getElementById('count-total');
 
 export const elements = {
+  TRACK,
   BTN_PREV,
   BTN_NEXT,
   COUNT_CURRENT,
   COUNT_TOTAL,
+  TITLE,
+  DESCRIPTION,
 }
 
 export const prevent = (e) => e.preventDefault()
@@ -26,42 +29,27 @@ export const listener = (cb = () => null, doPrevent = false) => (e) => {
 
 export const addListener = (el, type, cb, doPrevent) => el.addEventListener(type, listener(cb, doPrevent))
 
-export const setTrackDimesions = ({width, height}) => {
-  TRACK.style.width = width + 'px'
-  const H = getDimensions().height
-  TRACK.style.marginTop = H - ((H - height) / 2) + 'px'
+export const setTrackVisibility = (visible) => {
+  const opacity = visible ? 1 : 0
+  TRACK.style.opacity = opacity
 }
 
-export const setProjectTitle = (title, trackWidth) => {
-  // set text content
-  TITLE.textContent = title
-  TITLE.style.transform = 'scale(1, 1)'
-
-  // get current width of text
-  const {width} = TITLE.getBoundingClientRect()
-  const ratio = trackWidth / width
-  const size = ratio
-  // transform text to fill track width
-  TITLE.style.transform = `scale(${size}, ${size})`
-
-  // get transformed height of text
-  const {height} = TITLE.getBoundingClientRect()
-  console.log(height)
-  // set new height
-  // TITLE.style.height = height + 'px';
-}
-
-export const setProjectTitleSvg = (title, trackWidth) => {
+export const setProjectTitle = (title, imgHeight) => {
   TITLE.removeAttribute('viewBox')
   const text = TITLE.querySelector('text')
   text.textContent = title
   const {width} = text.getBoundingClientRect()
   TITLE.setAttribute('viewBox', `0 0 ${width} 26`)
+  TITLE.style.marginBottom = imgHeight - 25 + 'px'
 }
 
-export const setProjectDescription = (text) => {
+export const setProjectDescription = (text, width) => {
   //clear description
   DESCRIPTION.textContent = ""
+
+  // set description width
+
+  DESCRIPTION.style.width = width + 'px';
   // split text by linereturn and spaces
   const rows = text.split('\n').map(str => str.split(' ').filter(str => str !== ''))
   rows.forEach(row => {
